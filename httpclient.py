@@ -106,7 +106,6 @@ class HTTPClient(object):
         lines,ports = self.get_line_and_port(url)
 
         hs = lines.hostname
-        self.connect(socket.gethostbyname(hs),ports)
 
         if args != None:
             body = urllib.parse.urlencode(args)
@@ -114,8 +113,6 @@ class HTTPClient(object):
         paths = self.get_path(lines)
 
         message = "POST {path} HTTP/1.1\r\nHost: {host}\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: {length}\r\n\r\n{data}\r\n\r\nConnection: close\r\n\r\n".format(path=paths,data=body,length=len(body),host=hs)
-        # close the previous socket before connecting another one
-        self.close()
         self.connect(hs,ports)
         data = self.sendall(message)
         header = self.get_headers(data)
