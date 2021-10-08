@@ -41,8 +41,6 @@ class HTTPClient(object):
         return None
 
     def get_code(self, data):
-        for line in data:
-            print(line)
         code = data[0].split(' ')[1]
         print("Code: "+code)
         return int(code)
@@ -92,20 +90,21 @@ class HTTPClient(object):
 
         hs = lines.hostname
         self.connect(hs,ports)
-    
+        
         paths = self.get_path(lines)
 
         message = "GET {path} HTTP/1.1\r\nHost: {host}\r\n\r\nConnection: close\r\n\r\n".format(path=paths, host=hs)
         body = self.sendall(message)
         header = self.get_headers(body)
         code = self.get_code(header)
+        print(body)
         self.close()
         return HTTPResponse(code, body)
-
+    
     def POST(self, url, args=None):
         body = ""
         lines,ports = self.get_line_and_port(url)
-        
+
         hs = lines.hostname
         self.connect(socket.gethostbyname(hs),ports)
 
@@ -119,7 +118,8 @@ class HTTPClient(object):
         data = self.sendall(message)
         header = self.get_headers(data)
         code = self.get_code(header)
-        bodies = header[-1]
+        bodies = self.get_body(data)
+        print(data)
         self.close()
         return HTTPResponse(code, bodies)
 
