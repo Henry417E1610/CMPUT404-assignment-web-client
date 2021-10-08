@@ -41,19 +41,39 @@ class HTTPClient(object):
         return None
 
     def get_code(self, data):
-        return None
+        for line in data:
+            print(line)
+        code = data[0].split(' ')[1]
+        print("Code: "+code)
+        return int(code)
 
     def get_headers(self,data):
-        return None
+        return data.split("\r\n")
 
     def get_body(self, data):
-        return None
+        return data.split("\r\n")[-1]
     
     def sendall(self, data):
         self.socket.sendall(data.encode('utf-8'))
+        return self.recvall(self.socket)
         
     def close(self):
         self.socket.close()
+
+    def get_path(self, line):
+        if line.path:
+            paths = line.path
+        else:
+            paths = '/'
+        return paths
+
+    def get_line_and_port(self, url):
+        line = urllib.parse.urlparse(url)
+        if line.port:
+            ports = line.port
+        else:
+            ports = 80
+        return line,ports
 
     # read everything from the socket
     def recvall(self, sock):
@@ -68,14 +88,40 @@ class HTTPClient(object):
         return buffer.decode('utf-8')
 
     def GET(self, url, args=None):
-        code = 500
-        body = ""
+        lines,ports = self.get_line_and_port(url)
+
+        hs = lines.hostname
+        self.connect(hs,ports)
+    
+        paths = self.get_path(lines)
+
+        message = "GET {path} HTTP/1.1\r\nHost: {host}\r\n\r\nConnection: close\r\n\r\n".format(path=paths, host=hs)
+        body = self.sendall(message)
+        header = self.get_headers(body)
+        code = self.get_code(header)
+        self.close()
         return HTTPResponse(code, body)
 
     def POST(self, url, args=None):
-        code = 500
         body = ""
-        return HTTPResponse(code, body)
+        lines,ports = self.get_line_and_port(url)
+        
+        hs = lines.hostname
+        self.connect(socket.gethostbyname(hs),ports)
+
+        if args != None:
+            body = urllib.parse.urlencode(args)
+
+        paths = self.get_path(lines)
+
+        message = "POST {path} HTTP/1.1\r\nHost: {host}\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: {length}\r\n\r\n{data}\r\n\r\nConnection: close\r\n\r\n".format(path=paths,data=body,length=len(body),host=hs)
+        self.connect(hs,ports)
+        data = self.sendall(message)
+        header = self.get_headers(data)
+        code = self.get_code(header)
+        bodies = header[-1]
+        self.close()
+        return HTTPResponse(code, bodies)
 
     def command(self, url, command="GET", args=None):
         if (command == "POST"):
